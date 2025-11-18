@@ -1,13 +1,24 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { auth } from '@clerk/nextjs/server';
 
 export async function createClient() {
   const cookieStore = await cookies();
+  const { getToken } = await auth();
+
+  // Get Clerk session token with Supabase template for RLS
+  const supabaseToken = await getToken({ template: 'supabase' }).catch(() => null);
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      global: {
+        headers: {
+          // Pass Clerk JWT to Supabase for RLS authentication
+          Authorization: supabaseToken ? `Bearer ${supabaseToken}` : '',
+        },
+      },
       cookies: {
         getAll() {
           return cookieStore.getAll();
