@@ -4,6 +4,8 @@
 
 Monitor Reddit (with X/Twitter support coming soon) for finance-related discussions, analyze sentiment with AI, and generate smart reply drafts to promote your products naturally.
 
+**🚀 Live Demo**: [https://scoop.lona.agency](https://scoop.lona.agency)
+
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
