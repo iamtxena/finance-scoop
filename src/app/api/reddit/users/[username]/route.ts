@@ -21,6 +21,15 @@ export async function GET(
     return NextResponse.json({ posts });
   } catch (error) {
     console.error('Error fetching user posts:', error);
+
+    // Return 429 for rate limit errors
+    if (error instanceof Error && error.message === 'Rate limit exceeded') {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please try again in a few minutes.' },
+        { status: 429 }
+      );
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to fetch user posts' },
       { status: 500 }
