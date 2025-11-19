@@ -5,21 +5,25 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { useSubredditHotPosts, useSearchSubreddit } from '@/hooks/use-reddit';
-import { useDraftReply, useAnalyzeSentiment } from '@/hooks/use-ai';
+import { useSubredditHotPosts, useSearchSubreddit, type RedditPost } from '@/hooks/use-reddit';
+import { useAnalyzeSentiment } from '@/hooks/use-ai';
+import { PostDetailModal } from '@/components/features/post-detail-modal';
 
 export default function SubredditsPage() {
   const [selectedSubreddit, setSelectedSubreddit] = useState('algotrading');
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeQuery, setActiveQuery] = useState(''); // Committed search query
+  const [modalPost, setModalPost] = useState<RedditPost | null>(null);
 
-  const { data: hotPosts, isLoading } = useSubredditHotPosts(selectedSubreddit, 25);
-  const searchMutation = useSearchSubreddit();
+  const { data: hotPosts, isLoading: hotLoading } = useSubredditHotPosts(selectedSubreddit, 25);
+  const {
+    data: searchResults,
+    isLoading: searchLoading,
+  } = useSearchSubreddit(selectedSubreddit, activeQuery, 25);
   const analyzeMutation = useAnalyzeSentiment();
-  const draftMutation = useDraftReply();
 
   const [selectedPost, setSelectedPost] = useState<string | null>(null);
   const [sentiment, setSentiment] = useState<string | null>(null);
-  const [draft, setDraft] = useState<string | null>(null);
 
   const popularSubreddits = [
     'algotrading',
@@ -32,12 +36,9 @@ export default function SubredditsPage() {
     'cryptocurrency',
   ];
 
-  const handleSearch = async () => {
+  const handleSearch = () => {
     if (searchQuery.trim()) {
-      const results = await searchMutation.mutateAsync({
-        subreddit: selectedSubreddit,
-        query: searchQuery,
-      });
+      setActiveQuery(searchQuery);
     }
   };
 
@@ -47,13 +48,8 @@ export default function SubredditsPage() {
     setSentiment(result);
   };
 
-  const handleGenerateDraft = async (postContent: string, postId: string) => {
-    setSelectedPost(postId);
-    const result = await draftMutation.mutateAsync({ postContent, postId });
-    setDraft(result);
-  };
-
-  const posts = searchMutation.data || hotPosts || [];
+  const posts = (activeQuery ? searchResults : hotPosts) || [];
+  const isLoading = activeQuery ? searchLoading : hotLoading;
 
   return (
     <div className="space-y-6">
@@ -94,15 +90,15 @@ export default function SubredditsPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
-            <Button onClick={handleSearch} disabled={searchMutation.isPending}>
-              {searchMutation.isPending ? 'Searching...' : 'Search'}
+            <Button onClick={handleSearch} disabled={searchLoading}>
+              {searchLoading ? 'Searching...' : 'Search'}
             </Button>
           </div>
         </CardContent>
       </Card>
 
       <div className="grid gap-4">
-        {isLoading || searchMutation.isPending ? (
+        {isLoading ? (
           <Card>
             <CardContent className="p-6">Loading posts...</CardContent>
           </Card>
@@ -113,14 +109,12 @@ export default function SubredditsPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <CardTitle className="text-lg">
-                      <a
-                        href={post.permalink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:underline"
+                      <button
+                        onClick={() => setModalPost(post)}
+                        className="hover:underline text-left"
                       >
                         {post.title}
-                      </a>
+                      </button>
                     </CardTitle>
                     <CardDescription>
                       by u/{post.author} in r/{post.subreddit} • {post.score} upvotes •{' '}
@@ -139,10 +133,7 @@ export default function SubredditsPage() {
                     <Button
                       variant="default"
                       size="sm"
-                      onClick={() =>
-                        handleGenerateDraft(`${post.title}\n\n${post.selftext}`, post.id)
-                      }
-                      disabled={draftMutation.isPending}
+                      onClick={() => setModalPost(post)}
                     >
                       Draft Reply
                     </Button>
@@ -172,23 +163,6 @@ export default function SubredditsPage() {
                   </div>
                 </CardContent>
               )}
-              {selectedPost === post.id && draft && (
-                <CardContent>
-                  <div className="space-y-2 rounded-lg bg-muted p-4">
-                    <h4 className="text-sm font-semibold">Generated Reply</h4>
-                    <p className="whitespace-pre-wrap text-sm">{draft}</p>
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        navigator.clipboard.writeText(draft);
-                        alert('Copied to clipboard!');
-                      }}
-                    >
-                      Copy to Clipboard
-                    </Button>
-                  </div>
-                </CardContent>
-              )}
             </Card>
           ))
         ) : (
@@ -201,6 +175,14 @@ export default function SubredditsPage() {
           </Card>
         )}
       </div>
+
+      {modalPost && (
+        <PostDetailModal
+          post={modalPost}
+          open={!!modalPost}
+          onOpenChange={(open) => !open && setModalPost(null)}
+        />
+      )}
     </div>
   );
 }

@@ -13,6 +13,16 @@ export interface RedditPost {
   permalink: string;
 }
 
+export interface RedditComment {
+  id: string;
+  author: string;
+  body: string;
+  score: number;
+  created_utc: number;
+  depth: number;
+  replies?: RedditComment[];
+}
+
 // Reddit Public JSON API - No authentication needed!
 const REDDIT_API_BASE = 'https://www.reddit.com';
 const USER_AGENT = 'finance-scoop:v1.0.0 (by /u/your_username)';
@@ -202,4 +212,81 @@ export async function getSubredditNewPosts(
   await cacheSet(cacheKey, posts, 300);
 
   return posts;
+}
+
+/**
+ * Parse Reddit API comment response into RedditComment
+ */
+function parseComment(comment: any, depth: number = 0): RedditComment | null {
+  // Skip "more" comments placeholder
+  if (comment.kind === 'more') {
+    return null;
+  }
+
+  const data = comment.data;
+
+  // Parse nested replies recursively
+  const replies: RedditComment[] = [];
+  if (data.replies && typeof data.replies === 'object' && data.replies.data?.children) {
+    for (const reply of data.replies.data.children) {
+      const parsed = parseComment(reply, depth + 1);
+      if (parsed) {
+        replies.push(parsed);
+      }
+    }
+  }
+
+  return {
+    id: data.id,
+    author: data.author || '[deleted]',
+    body: data.body || '[deleted]',
+    score: data.score || 0,
+    created_utc: data.created_utc,
+    depth,
+    replies: replies.length > 0 ? replies : undefined,
+  };
+}
+
+/**
+ * Get comments for a specific post
+ */
+export async function getPostComments(
+  postId: string,
+  subreddit: string,
+  limit: number = 50
+): Promise<RedditComment[]> {
+  // Check rate limit
+  const { success } = await checkRateLimit(`reddit:comments:${postId}`, 10, 600);
+  if (!success) {
+    throw new Error('Rate limit exceeded');
+  }
+
+  // Try cache first
+  const cacheKey = `reddit:comments:${postId}`;
+  const cached = await cacheGet<RedditComment[]>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  // Fetch from Reddit public API
+  const url = `${REDDIT_API_BASE}/r/${subreddit}/comments/${postId}.json?limit=${limit}&depth=3`;
+  const data = await fetchReddit(url);
+
+  // Comments are in the second element of the response array
+  const commentsListing = data[1];
+  const comments: RedditComment[] = [];
+
+  if (commentsListing?.data?.children) {
+    for (const child of commentsListing.data.children) {
+      const parsed = parseComment(child);
+      if (parsed) {
+        comments.push(parsed);
+      }
+    }
+  }
+
+  // Cache for 10 minutes
+  await cacheSet(cacheKey, comments, 600);
+
+  return comments;
 }

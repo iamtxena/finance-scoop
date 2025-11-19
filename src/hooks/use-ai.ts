@@ -14,8 +14,20 @@ export function useAnalyzeSentiment() {
 
 export function useDraftReply() {
   return useMutation({
-    mutationFn: async ({ postContent, postId }: { postContent: string; postId?: string }) => {
-      const { data } = await axios.post('/api/ai/draft', { postContent, postId });
+    mutationFn: async ({
+      postContent,
+      postId,
+      customContext,
+    }: {
+      postContent: string;
+      postId?: string;
+      customContext?: string;
+    }) => {
+      const { data } = await axios.post('/api/ai/draft', {
+        postContent,
+        postId,
+        customContext,
+      });
       return data.draft as string;
     },
   });

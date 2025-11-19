@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { postContent, postId } = body;
+    const { postContent, postId, customContext } = body;
 
     if (!postContent) {
       return NextResponse.json(
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const draft = await draftReply(postContent);
+    const draft = await draftReply(postContent, customContext);
 
     // Save draft to database if postId provided
     if (postId) {
