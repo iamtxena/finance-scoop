@@ -24,7 +24,7 @@
     "axios": "^1.13.2",
     "langsmith": "^0.3.79",
     "lightweight-charts": "^5.0.9",
-    "next": "^16.0.7",
+    "next": "^16.0.9",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "resend": "^6.5.0",
