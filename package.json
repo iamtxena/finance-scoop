@@ -21,7 +21,7 @@
     "@tanstack/react-query-devtools": "^5.90.2",
     "@upstash/redis": "^1.35.6",
     "ai": "^5.0.95",
-    "axios": "^1.13.2",
+    "axios": "^1.13.5",
     "langsmith": "^0.3.79",
     "lightweight-charts": "^5.0.9",
     "next": "^16.0.7",
